@@ -1,154 +1,161 @@
 #include <iostream>
-#include <vector>
-#include <map>
-#include <algorithm>
-#include <variant>
-
+#include <fstream>
+#include "user.h"
+#include "film.h"
+#include "graph.h"
+#define numUsers 5
+#define numFilms 15
 using namespace std;
 
-struct film {
-    int Id;
-    string filmName;
-    string genre;
-};
-
-struct user {
-    int Id;
-    string Name;
-
-};
-
-struct graphNode {
-    int vertexId;
-    variant< film *, user *> data;
-    vector<graphNode *> adjacentNodes;
-//    void operator=(graphNode& gr){
-//        this->vertexId = gr.vertexId;
-//        this->userData = gr.userData;
-//        this->filmData = gr.filmData;
-//        this->adjacentNodes = gr.adjacentNodes;
-//
-//    }
-
-
-    graphNode(film *const filmInf) {
-        data = filmInf;
-        vertexId = filmInf->Id;
+void getDataForEngine(user* users, film* films){
+    ifstream usersFile("C:\\Users\\Dima\\CLionProjects\\recEng\\users.txt");
+    ifstream filmsFile("C:\\Users\\Dima\\CLionProjects\\recEng\\films.txt");
+    for(int i=0; i<numUsers; i++){
+        usersFile>>users[i];
     }
-
-    graphNode(user *const userInf) {
-        data = userInf;
-        vertexId = userInf->Id;
+    for(int i=0; i<numFilms; i++){
+        filmsFile>>films[i];
     }
-};
-
-struct graph {
-    map<int, graphNode *> adjacentList;
+    usersFile.close();
+    filmsFile.close();
 
 
-    void addNode(film *const filmInf) {
-        graphNode *temp = new graphNode(filmInf);
-        adjacentList.insert(make_pair(temp->vertexId, temp));
+}
 
+
+void getRecomendationList(graph& graphWithRec,int userId, vector<graphNode*>& vectroWithAdjacent){
+    vector<graphNode*> oneFilmRecomendation;
+    vector<graphNode*> usersRecomendation;
+    vector<graphNode*> recomendation;
+
+    vectroWithAdjacent.clear();
+    for(auto i:graphWithRec.adjacentList.at(userId)->adjacentNodes){
+        vectroWithAdjacent.push_back(i); // всі фільми які користувач лайкнув
     }
-
-    void addNode(user *const userInf) {
-        graphNode *temp = new graphNode(userInf);
-        adjacentList.insert(make_pair(temp->vertexId, temp));
-    }
-
-    void addEdge(int graphFrom, int graphTo) {
-        graphNode *graph1 = adjacentList.at(graphFrom);
-        graphNode *graph2 = adjacentList.at(graphTo);
-        graph1->adjacentNodes.push_back(graph2);
-        graph2->adjacentNodes.push_back(graph1);
-    }
-
-    void removeNode(int nodeId) {
-        graphNode *graph = adjacentList.at(nodeId);
-        for (auto i: graph->adjacentNodes) {
-            std::vector<graphNode *>::iterator position = std::find(i->adjacentNodes.begin(), i->adjacentNodes.end(),
-                                                                    graph);
-            if (position != i->adjacentNodes.end()) // == myVector.end() means the element was not found
-                i->adjacentNodes.erase(position);
-        }
-        adjacentList.erase(adjacentList.find(graph->vertexId));
-        delete graph;
-
-    }
-
-    void removeEdge(int nodeFromId, int nodeToId){
-        graphNode *graphFrom = adjacentList.at(nodeFromId);
-        graphNode *graphTo = adjacentList.at(nodeToId);
-
-
-        std::vector<graphNode *>::iterator position = std::find(graphFrom->adjacentNodes.begin(), graphFrom->adjacentNodes.end(),
-                                                                    graphTo);
-        if (position != graphFrom->adjacentNodes.end()) // == myVector.end() means the element was not found
-            graphFrom->adjacentNodes.erase(position);
-        position = std::find(graphTo->adjacentNodes.begin(), graphTo->adjacentNodes.end(),
-                                                                graphFrom);
-        if (position != graphTo->adjacentNodes.end()) // == myVector.end() means the element was not found
-            graphTo->adjacentNodes.erase(position);
-
-    }
-
-    void getAdjacentNodes(int nodeId, vector<graphNode*>&vectorForResults){
-        graphNode* graph = adjacentList.at(nodeId);
-        vector<graphNode*> res;
-        for(auto i: graph->adjacentNodes){
-            res.push_back(i);
-        }
-        vectorForResults = res;
-    }
-
-    void viewGraph() {
-        for (auto i: adjacentList) {
-            cout << i.first << " - ";
-            for (int j = 0; j < i.second->adjacentNodes.size(); j++) {
-                cout << (i.second->adjacentNodes[j]->vertexId);
-
+    for(auto i : vectroWithAdjacent){
+        graphWithRec.getAdjacentNodes(i->vertexId, oneFilmRecomendation);
+        for(auto oneUser: oneFilmRecomendation){// список коритсувачів які лайкнули кіно
+            graphWithRec.getAdjacentNodes(oneUser->vertexId, usersRecomendation);
+            for(auto resFilm:usersRecomendation){
+                if(!graphWithRec.checkAdjacent(userId, resFilm->vertexId) &&
+                        find(recomendation.begin(), recomendation.end(),resFilm) == recomendation.end()){
+                    recomendation.push_back(resFilm);
+                }
             }
-            cout << endl;
-        }
-    }
 
-    void destroy() {
-        vector<int> keys;
-        for (auto i: adjacentList) {
-            keys.push_back((i.second->vertexId));
-        }
-        for (auto i: keys) {
-            removeNode(i);
 
         }
     }
-
-    ~graph() {
-        destroy();
+    vectroWithAdjacent.clear();
+    for(auto i:recomendation){
+        vectroWithAdjacent.push_back(i);
     }
-};
+
+}
+
+
+
+
+void getRecomendation(int userId, int filmId,user* users, film* films, graph& graphWithRec){
+    vector<graphNode*> recomendation;
+    vector<graphNode*> temp;
+    //get users with id
+
+
+
+    user * thisUser;
+    film* thisFilm;
+
+
+    for(int i=0; i<numUsers; i++){
+        if (users[i].Id == userId){
+            thisUser =&users[i];
+            break;
+
+        };
+
+    }
+    for(int i=0; i<numFilms; i++){
+        if (films[i].Id == filmId){
+            thisFilm =&films[i];
+            break;
+
+        }
+    }
+
+
+
+    if (graphWithRec.checkExistenceInGraph(userId) && graphWithRec.checkExistenceInGraph(filmId)){
+        graphWithRec.addEdge(userId, filmId);
+        getRecomendationList(graphWithRec, userId, recomendation);
+
+
+    } else if(!graphWithRec.checkExistenceInGraph(userId) && graphWithRec.checkExistenceInGraph(filmId)){
+        graphWithRec.addNode(thisUser);
+        graphWithRec.addEdge(userId, filmId);
+        getRecomendationList(graphWithRec, userId, recomendation);
+
+
+
+    }else if(graphWithRec.checkExistenceInGraph(userId) && !graphWithRec.checkExistenceInGraph(filmId)){
+        graphWithRec.addNode(thisFilm);
+        graphWithRec.addEdge(userId, filmId);
+        getRecomendationList(graphWithRec, userId, recomendation);
+
+
+
+    } else{
+        graphWithRec.addNode(thisUser);
+        graphWithRec.addNode(thisFilm);
+        graphWithRec.addEdge(userId, filmId);
+        getRecomendationList(graphWithRec, userId, temp);
+
+
+
+    }
+    cout<<"РЕКОМЕНДАЦІЇ:";
+    for(auto i:recomendation){
+        cout<<get<film*>(i->data)->filmName<<"; ";
+    }
+    cout<<endl;
+}
+
+
+
+
+
 
 
 int main() {
 
 
+    user users[numUsers];
+    film films[numFilms];
+    graph graphWithRecomendation;
+    getDataForEngine(users, films);
 
-    vector<graphNode*>m;
+    int ctr, firstId, secondId;
+    while (true){
+        cout<<"Введіть номер команди (0 - стоп, 1 - поставити лайк):";
+        cin>>ctr;
+        if(!ctr){
+            break;
+        }
+        cout<<"Введіть id користувача та id фільму:";
+        cin>>firstId>>secondId;
+        getRecomendation(firstId, secondId, users, films, graphWithRecomendation);
 
-    graph g;
-    user u = {1, "dmytro"};
-    user u2 = {2, "petro"};
 
-    g.addNode(&u);
-    g.addNode(&u2);
 
-    g.addEdge(u.Id, u2.Id);
 
-    g.getAdjacentNodes(1, m);
-    for(auto i:m){
-        cout<<i->vertexId;
+
+
+
     }
+
+
+
+
 
 
     return 0;
