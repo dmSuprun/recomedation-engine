@@ -24,32 +24,39 @@ void getDataForEngine(user* users, film* films){
 
 
 void getRecomendationList(graph& graphWithRec,int userId, vector<graphNode*>& vectroWithAdjacent){
-    vector<graphNode*> oneFilmRecomendation;
-    vector<graphNode*> usersRecomendation;
+    // get films that user liked
+    vector<graphNode*> thisUserLikedFilms;
+
+    vector<graphNode*> usersForRecomendation;
     vector<graphNode*> recomendation;
 
-    vectroWithAdjacent.clear();
-    for(auto i:graphWithRec.adjacentList.at(userId)->adjacentNodes){
-        vectroWithAdjacent.push_back(i); // всі фільми які користувач лайкнув
+    graphWithRec.getAdjacentNodes(userId, thisUserLikedFilms);
+    for(auto oneFilm:thisUserLikedFilms){
+        vector<graphNode*> temp;
+        graphWithRec.getAdjacentNodes(oneFilm->vertexId, temp);
+        usersForRecomendation.insert(usersForRecomendation.end(),temp.begin(), temp.end());
     }
-    for(auto i : vectroWithAdjacent){
-        graphWithRec.getAdjacentNodes(i->vertexId, oneFilmRecomendation);
-        for(auto oneUser: oneFilmRecomendation){// список коритсувачів які лайкнули кіно
-            graphWithRec.getAdjacentNodes(oneUser->vertexId, usersRecomendation);
-            for(auto resFilm:usersRecomendation){
-                if(!graphWithRec.checkAdjacent(userId, resFilm->vertexId) &&
-                        find(recomendation.begin(), recomendation.end(),resFilm) == recomendation.end()){
-                    recomendation.push_back(resFilm);
-                }
-            }
 
+    for(auto oneUser:usersForRecomendation){
+        vector<graphNode*> temp;
+        graphWithRec.getAdjacentNodes(oneUser->vertexId, temp);
+        recomendation.insert(recomendation.begin(),temp.begin(), temp.end());
+    }
 
+    int totalSize=recomendation.size();
+    int numDel=0;
+    for(int i=0;i<totalSize;i++){
+        if(graphWithRec.checkAdjacent(userId, recomendation[i-numDel]->vertexId)){
+            recomendation.erase(recomendation.begin()+i-numDel);
+            numDel++;
         }
+
     }
+
+
     vectroWithAdjacent.clear();
-    for(auto i:recomendation){
-        vectroWithAdjacent.push_back(i);
-    }
+    vectroWithAdjacent.insert(vectroWithAdjacent.begin(), recomendation.begin(), recomendation.end());
+
 
 }
 
@@ -60,13 +67,8 @@ void getRecomendation(int userId, int filmId,user* users, film* films, graph& gr
     vector<graphNode*> recomendation;
     vector<graphNode*> temp;
     //get users with id
-
-
-
     user * thisUser;
     film* thisFilm;
-
-
     for(int i=0; i<numUsers; i++){
         if (users[i].Id == userId){
             thisUser =&users[i];
@@ -83,8 +85,6 @@ void getRecomendation(int userId, int filmId,user* users, film* films, graph& gr
         }
     }
 
-
-
     if (graphWithRec.checkExistenceInGraph(userId) && graphWithRec.checkExistenceInGraph(filmId)){
         graphWithRec.addEdge(userId, filmId);
         getRecomendationList(graphWithRec, userId, recomendation);
@@ -95,23 +95,16 @@ void getRecomendation(int userId, int filmId,user* users, film* films, graph& gr
         graphWithRec.addEdge(userId, filmId);
         getRecomendationList(graphWithRec, userId, recomendation);
 
-
-
     }else if(graphWithRec.checkExistenceInGraph(userId) && !graphWithRec.checkExistenceInGraph(filmId)){
         graphWithRec.addNode(thisFilm);
         graphWithRec.addEdge(userId, filmId);
         getRecomendationList(graphWithRec, userId, recomendation);
-
-
 
     } else{
         graphWithRec.addNode(thisUser);
         graphWithRec.addNode(thisFilm);
         graphWithRec.addEdge(userId, filmId);
         getRecomendationList(graphWithRec, userId, temp);
-
-
-
     }
     cout<<"РЕКОМЕНДАЦІЇ:";
     for(auto i:recomendation){
@@ -145,18 +138,6 @@ int main() {
         cin>>firstId>>secondId;
         getRecomendation(firstId, secondId, users, films, graphWithRecomendation);
 
-
-
-
-
-
-
     }
-
-
-
-
-
-
     return 0;
 }
